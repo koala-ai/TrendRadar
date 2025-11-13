@@ -4550,11 +4550,6 @@ def main():
     except Exception as e:
         print(f"❌ 程序运行错误: {e}")
         raise
-
-
-if __name__ == "__main__":
-    main()
-
 # ========================
 # ✅ MCP AI 标注插件（内联版）
 # 作者：为你定制 | 适配 TrendRadar v3.0.5
@@ -4667,3 +4662,9 @@ def inject_ai_annotations_if_available(html_file_path: str, stats: List[Dict]) -
     except Exception as e:
         print(f"⚠️ AI 标注重写失败：{e}")
         return html_file_path
+
+
+if __name__ == "__main__":
+    main()
+
+
