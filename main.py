@@ -4195,7 +4195,7 @@ class NewsAnalyzer:
                 }
         return title_info
 
-    def _run_analysis_pipeline(
+        def _run_analysis_pipeline(
         self,
         data_source: Dict,
         mode: str,
@@ -4208,7 +4208,6 @@ class NewsAnalyzer:
         is_daily_summary: bool = False,
     ) -> Tuple[List[Dict], str]:
         """统一的分析流水线：数据处理 → 统计计算 → HTML生成"""
-
         # 统计计算
         stats, total_titles = count_word_frequency(
             data_source,
@@ -4220,8 +4219,7 @@ class NewsAnalyzer:
             new_titles,
             mode=mode,
         )
-
-        # HTML生成
+        # HTML生成（第一步：先得到原始 html_file）
         html_file = generate_html_report(
             stats,
             total_titles,
@@ -4231,10 +4229,9 @@ class NewsAnalyzer:
             mode=mode,
             is_daily_summary=is_daily_summary,
             update_info=self.update_info if CONFIG["SHOW_VERSION_UPDATE"] else None,
-            # ✅ AI 标注注入（自动检测 MCP 服务）
-            html_file = inject_ai_annotations_if_available(html_file, stats)
         )
-
+        # ✅ AI 标注注入（第二步：用返回值覆盖 html_file）
+        html_file = inject_ai_annotations_if_available(html_file, stats)
         return stats, html_file
 
     def _send_notification_if_needed(
@@ -4537,19 +4534,7 @@ class NewsAnalyzer:
             raise
 
 
-def main():
-    try:
-        analyzer = NewsAnalyzer()
-        analyzer.run()
-    except FileNotFoundError as e:
-        print(f"❌ 配置文件错误: {e}")
-        print("\n请确保以下文件存在:")
-        print("  • config/config.yaml")
-        print("  • config/frequency_words.txt")
-        print("\n参考项目文档进行正确配置")
-    except Exception as e:
-        print(f"❌ 程序运行错误: {e}")
-        raise
+
 # ========================
 # ✅ MCP AI 标注插件（内联版）
 # 作者：为你定制 | 适配 TrendRadar v3.0.5
@@ -4662,7 +4647,19 @@ def inject_ai_annotations_if_available(html_file_path: str, stats: List[Dict]) -
     except Exception as e:
         print(f"⚠️ AI 标注重写失败：{e}")
         return html_file_path
-
+def main():
+    try:
+        analyzer = NewsAnalyzer()
+        analyzer.run()
+    except FileNotFoundError as e:
+        print(f"❌ 配置文件错误: {e}")
+        print("\n请确保以下文件存在:")
+        print("  • config/config.yaml")
+        print("  • config/frequency_words.txt")
+        print("\n参考项目文档进行正确配置")
+    except Exception as e:
+        print(f"❌ 程序运行错误: {e}")
+        raise
 
 if __name__ == "__main__":
     main()
