@@ -2051,14 +2051,6 @@ def render_html_content(
                 font-family: 'SF Mono', Consolas, monospace;
             }
             
-            .footer {
-                margin-top: 32px;
-                padding: 20px 24px;
-                background: #f8f9fa;
-                border-top: 1px solid #e5e7eb;
-                text-align: center;
-            }
-            
             @media (max-width: 480px) {
                 body { padding: 12px; }
                 .header { padding: 24px 20px; }
@@ -2321,9 +2313,6 @@ def render_html_content(
 
     html += """
             </div>
-            
-            <div class="footer">
-                <div class="footer-content">
         </div>
         
         <script>
@@ -2850,27 +2839,7 @@ def split_content_into_batches(
         base_header += f"**类型：** 热点分析报告\n\n"
         base_header += "---\n\n"
 
-    base_footer = ""
-    if format_type == "wework":
-        base_footer = f"\n\n\n> 更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
-        if update_info:
-            base_footer += f"\n> TrendRadar 发现新版本 **{update_info['remote_version']}**，当前 **{update_info['current_version']}**"
-    elif format_type == "telegram":
-        base_footer = f"\n\n更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
-        if update_info:
-            base_footer += f"\nTrendRadar 发现新版本 {update_info['remote_version']}，当前 {update_info['current_version']}"
-    elif format_type == "ntfy":
-        base_footer = f"\n\n> 更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
-        if update_info:
-            base_footer += f"\n> TrendRadar 发现新版本 **{update_info['remote_version']}**，当前 **{update_info['current_version']}**"
-    elif format_type == "feishu":
-        base_footer = f"\n\n<font color='grey'>更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}</font>"
-        if update_info:
-            base_footer += f"\n<font color='grey'>TrendRadar 发现新版本 {update_info['remote_version']}，当前 {update_info['current_version']}</font>"
-    elif format_type == "dingtalk":
-        base_footer = f"\n\n> 更新时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
-        if update_info:
-            base_footer += f"\n> TrendRadar 发现新版本 **{update_info['remote_version']}**，当前 **{update_info['current_version']}**"
+
 
     stats_header = ""
     if report_data["stats"]:
@@ -2900,7 +2869,7 @@ def split_content_into_batches(
         else:
             mode_text = "暂无匹配的热点词汇"
         simple_content = f"📭 {mode_text}\n\n"
-        final_content = base_header + simple_content + base_footer
+        final_content = base_header + simple_content
         batches.append(final_content)
         return batches
 
@@ -2910,15 +2879,12 @@ def split_content_into_batches(
 
         # 添加统计标题
         test_content = current_batch + stats_header
-        if (
-            len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-            < max_bytes
-        ):
+        if len(test_content.encode("utf-8")) < max_bytes:
             current_batch = test_content
             current_batch_has_content = True
         else:
             if current_batch_has_content:
-                batches.append(current_batch + base_footer)
+                batches.append(current_batch)
             current_batch = base_header + stats_header
             current_batch_has_content = True
 
@@ -3013,13 +2979,10 @@ def split_content_into_batches(
             word_with_first_news = word_header + first_news_line
             test_content = current_batch + word_with_first_news
 
-            if (
-                len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-                >= max_bytes
-            ):
+            if len(test_content.encode("utf-8")) >= max_bytes:
                 # 当前批次容纳不下，开启新批次
                 if current_batch_has_content:
-                    batches.append(current_batch + base_footer)
+                    batches.append(current_batch)
                 current_batch = base_header + stats_header + word_with_first_news
                 current_batch_has_content = True
                 start_index = 1
@@ -3059,12 +3022,9 @@ def split_content_into_batches(
                     news_line += "\n"
 
                 test_content = current_batch + news_line
-                if (
-                    len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-                    >= max_bytes
-                ):
+                if len(test_content.encode("utf-8")) >= max_bytes:
                     if current_batch_has_content:
-                        batches.append(current_batch + base_footer)
+                        batches.append(current_batch)
                     current_batch = base_header + stats_header + word_header + news_line
                     current_batch_has_content = True
                 else:
@@ -3086,10 +3046,7 @@ def split_content_into_batches(
                     separator = f"\n---\n\n"
 
                 test_content = current_batch + separator
-                if (
-                    len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-                    < max_bytes
-                ):
+                if len(test_content.encode("utf-8")) < max_bytes:
                     current_batch = test_content
 
     # 处理新增新闻（同样确保来源标题+第一条新闻的原子性）
@@ -3109,12 +3066,9 @@ def split_content_into_batches(
             new_header = f"\n---\n\n🆕 **本次新增热点新闻** (共 {report_data['total_new_count']} 条)\n\n"
 
         test_content = current_batch + new_header
-        if (
-            len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-            >= max_bytes
-        ):
+        if len(test_content.encode("utf-8")) >= max_bytes:
             if current_batch_has_content:
-                batches.append(current_batch + base_footer)
+                batches.append(current_batch)
             current_batch = base_header + new_header
             current_batch_has_content = True
         else:
@@ -3167,12 +3121,9 @@ def split_content_into_batches(
             source_with_first_news = source_header + first_news_line
             test_content = current_batch + source_with_first_news
 
-            if (
-                len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-                >= max_bytes
-            ):
+            if len(test_content.encode("utf-8")) >= max_bytes:
                 if current_batch_has_content:
-                    batches.append(current_batch + base_footer)
+                    batches.append(current_batch)
                 current_batch = base_header + new_header + source_with_first_news
                 current_batch_has_content = True
                 start_index = 1
@@ -3209,12 +3160,9 @@ def split_content_into_batches(
                 news_line = f"  {j + 1}. {formatted_title}\n"
 
                 test_content = current_batch + news_line
-                if (
-                    len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-                    >= max_bytes
-                ):
+                if len(test_content.encode("utf-8")) >= max_bytes:
                     if current_batch_has_content:
-                        batches.append(current_batch + base_footer)
+                        batches.append(current_batch)
                     current_batch = base_header + new_header + source_header + news_line
                     current_batch_has_content = True
                 else:
@@ -3237,12 +3185,9 @@ def split_content_into_batches(
             failed_header = f"\n---\n\n⚠️ **数据获取失败的平台：**\n\n"
 
         test_content = current_batch + failed_header
-        if (
-            len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-            >= max_bytes
-        ):
+        if len(test_content.encode("utf-8")) >= max_bytes:
             if current_batch_has_content:
-                batches.append(current_batch + base_footer)
+                batches.append(current_batch)
             current_batch = base_header + failed_header
             current_batch_has_content = True
         else:
@@ -3258,12 +3203,9 @@ def split_content_into_batches(
                 failed_line = f"  • {id_value}\n"
 
             test_content = current_batch + failed_line
-            if (
-                len(test_content.encode("utf-8")) + len(base_footer.encode("utf-8"))
-                >= max_bytes
-            ):
+            if len(test_content.encode("utf-8")) >= max_bytes:
                 if current_batch_has_content:
-                    batches.append(current_batch + base_footer)
+                    batches.append(current_batch)
                 current_batch = base_header + failed_header + failed_line
                 current_batch_has_content = True
             else:
@@ -3272,7 +3214,7 @@ def split_content_into_batches(
 
     # 完成最后批次
     if current_batch_has_content:
-        batches.append(current_batch + base_footer)
+        batches.append(current_batch)
 
     return batches
 
