@@ -4195,7 +4195,7 @@ class NewsAnalyzer:
                 }
         return title_info
 
-        def _run_analysis_pipeline(
+    def _run_analysis_pipeline(
         self,
         data_source: Dict,
         mode: str,
