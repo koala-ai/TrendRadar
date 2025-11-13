@@ -19,6 +19,9 @@ import pytz
 import requests
 import yaml
 
+# 导入股票关联模块
+from stock_association import associate_news_with_stocks, format_stock_info
+
 
 VERSION = "3.0.5"
 
@@ -1428,7 +1431,8 @@ def prepare_report_data(
             }
         )
 
-    return {
+    # 准备基础报告数据
+    report_data = {
         "stats": processed_stats,
         "new_titles": processed_new_titles,
         "failed_ids": failed_ids or [],
@@ -1436,6 +1440,11 @@ def prepare_report_data(
             len(source["titles"]) for source in processed_new_titles
         ),
     }
+    
+    # 集成股票关联功能
+    report_data = associate_news_with_stocks(report_data)
+    
+    return report_data
 
 
 def format_title_for_platform(
@@ -1469,6 +1478,11 @@ def format_title_for_platform(
             result += f" <font color='grey'>- {title_data['time_display']}</font>"
         if title_data["count"] > 1:
             result += f" <font color='green'>({title_data['count']}次)</font>"
+        
+        # 添加相关股票信息
+        related_stocks = title_data.get("related_stocks", [])
+        if related_stocks:
+            result += format_stock_info(related_stocks, "feishu")
 
         return result
 
@@ -1482,6 +1496,11 @@ def format_title_for_platform(
 
         if show_source:
             result = f"[{title_data['source_name']}] {title_prefix}{formatted_title}"
+        
+        # 添加相关股票信息
+        related_stocks = title_data.get("related_stocks", [])
+        if related_stocks:
+            result += format_stock_info(related_stocks, "ntfy")
         else:
             result = f"{title_prefix}{formatted_title}"
 
@@ -1491,6 +1510,11 @@ def format_title_for_platform(
             result += f" - {title_data['time_display']}"
         if title_data["count"] > 1:
             result += f" ({title_data['count']}次)"
+        
+        # 添加相关股票信息
+        related_stocks = title_data.get("related_stocks", [])
+        if related_stocks:
+            result += format_stock_info(related_stocks, "dingtalk")
 
         return result
 
@@ -1513,6 +1537,11 @@ def format_title_for_platform(
             result += f" - {title_data['time_display']}"
         if title_data["count"] > 1:
             result += f" ({title_data['count']}次)"
+        
+        # 添加相关股票信息
+        related_stocks = title_data.get("related_stocks", [])
+        if related_stocks:
+            result += format_stock_info(related_stocks, "wework")
 
         return result
 
@@ -1535,6 +1564,11 @@ def format_title_for_platform(
             result += f" <code>- {title_data['time_display']}</code>"
         if title_data["count"] > 1:
             result += f" <code>({title_data['count']}次)</code>"
+        
+        # 添加相关股票信息
+        related_stocks = title_data.get("related_stocks", [])
+        if related_stocks:
+            result += format_stock_info(related_stocks, "telegram")
 
         return result
 
@@ -4195,7 +4229,7 @@ class NewsAnalyzer:
                 }
         return title_info
 
-        def _run_analysis_pipeline(
+    def _run_analysis_pipeline(
         self,
         data_source: Dict,
         mode: str,
