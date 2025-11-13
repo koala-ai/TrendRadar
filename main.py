@@ -2059,34 +2059,11 @@ def render_html_content(
                 text-align: center;
             }
             
-            .footer-content {
-                font-size: 13px;
-                color: #6b7280;
-                line-height: 1.6;
-            }
-            
-            .footer-link {
-                color: #4f46e5;
-                text-decoration: none;
-                font-weight: 500;
-                transition: color 0.2s ease;
-            }
-            
-            .footer-link:hover {
-                color: #7c3aed;
-                text-decoration: underline;
-            }
-            
-            .project-name {
-                font-weight: 600;
-                color: #374151;
-            }
-            
             @media (max-width: 480px) {
                 body { padding: 12px; }
                 .header { padding: 24px 20px; }
                 .content { padding: 20px; }
-                .footer { padding: 16px 20px; }
+
                 .header-info { grid-template-columns: 1fr; gap: 12px; }
                 .news-header { gap: 6px; }
                 .news-content { padding-right: 45px; }
@@ -2347,21 +2324,6 @@ def render_html_content(
             
             <div class="footer">
                 <div class="footer-content">
-                    由 <span class="project-name">TrendRadar</span> 生成 · 
-                    <a href="https://github.com/sansan0/TrendRadar" target="_blank" class="footer-link">
-                        GitHub 开源项目
-                    </a>"""
-
-    if update_info:
-        html += f"""
-                    <br>
-                    <span style="color: #ea580c; font-weight: 500;">
-                        发现新版本 {update_info['remote_version']}，当前版本 {update_info['current_version']}
-                    </span>"""
-
-    html += """
-                </div>
-            </div>
         </div>
         
         <script>
@@ -2453,7 +2415,7 @@ def render_html_content(
                     const newSection = container.querySelector('.new-section');
                     const errorSection = container.querySelector('.error-section');
                     const header = container.querySelector('.header');
-                    const footer = container.querySelector('.footer');
+
                     
                     // 计算元素位置和高度
                     const containerRect = container.getBoundingClientRect();
@@ -2524,16 +2486,6 @@ def render_html_content(
                             height: rect.height
                         });
                     }
-                    
-                    // 添加footer
-                    const footerRect = footer.getBoundingClientRect();
-                    elements.push({
-                        type: 'footer',
-                        element: footer,
-                        top: footerRect.top - containerRect.top,
-                        bottom: footerRect.bottom - containerRect.top,
-                        height: footer.offsetHeight
-                    });
                     
                     // 计算分割点
                     const segments = [];
