@@ -4231,6 +4231,8 @@ class NewsAnalyzer:
             mode=mode,
             is_daily_summary=is_daily_summary,
             update_info=self.update_info if CONFIG["SHOW_VERSION_UPDATE"] else None,
+            # ✅ AI 标注注入（自动检测 MCP 服务）
+            html_file = inject_ai_annotations_if_available(html_file, stats)
         )
 
         return stats, html_file
@@ -4552,3 +4554,116 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ========================
+# ✅ MCP AI 标注插件（内联版）
+# 作者：为你定制 | 适配 TrendRadar v3.0.5
+# 功能：自动为每条新闻添加「潜在受益股」AI 分析区块
+# ========================
+def is_mcp_available():
+    """检测 MCP 服务是否运行中"""
+    try:
+        res = requests.post("http://localhost:3333/mcp", json={
+            "jsonrpc": "2.0", "method": "mcp/ping", "id": 1
+        }, timeout=2)
+        return res.status_code == 200
+    except:
+        return False
+
+def annotate_news_with_ai(news_list):
+    """调用 MCP 为新闻列表添加 AI 标注"""
+    if not is_mcp_available():
+        return news_list
+    for item in news_list:
+        title = item.get("title", "")
+        if not title or "ai_annotation" in item:
+            continue
+        prompt = f"""你是A股事件驱动型投资分析师，请严格按JSON格式回答：
+【新闻标题】{title}
+要求：
+1. event_type: 一句话概括事件类型（如：政策试点/订单签订/技术突破）
+2. benefit_sectors: ["产业链环节1","环节2"]
+3. small_cap_stocks: ["小盘标的1(代码)","标的2"]
+4. risk_note: "风险提示"
+输出示例：{{"event_type":"低空经济试点批复","benefit_sectors":["空管系统","eVTOL机体"],"small_cap_stocks":["新晨科技(300554)","商络电子(300998)"],"risk_note":"试点落地进度待观察"}}
+"""
+        try:
+            res = requests.post("http://localhost:3333/mcp", json={
+                "jsonrpc":"2.0","method":"mcp/invoke_tool",
+                "params":{"name":"mcp/talk_with_model","arguments":{"messages":[{"role":"user","content":prompt}]}},
+                "id":1}, timeout=5)
+            if res.ok:
+                try:
+                    content = res.json().get("result",{}).get("content","{}")
+                    item["ai_annotation"] = json.loads(content)
+                except: pass
+        except: pass
+        time.sleep(0.1)
+    return news_list
+
+def inject_ai_annotations_if_available(html_file_path: str, stats: List[Dict]) -> str:
+    """若 MCP 可用，重写 HTML 文件，注入 AI 标注区块"""
+    if not is_mcp_available():
+        return html_file_path
+    try:
+        # 1. 为所有新闻添加 AI 标注
+        for stat in stats:
+            for title_data in stat["titles"]:
+                title_data["ai_annotation"] = {}
+        # 构造扁平化 news_list 供 annotate
+        flat_news = []
+        for stat in stats:
+            for title_data in stat["titles"]:
+                flat_news.append({
+                    "title": title_data["title"],
+                    "source_name": title_data["source_name"]
+                })
+        annotated_flat = annotate_news_with_ai(flat_news)
+        # 映射回原结构
+        idx = 0
+        for stat in stats:
+            for title_data in stat["titles"]:
+                if idx < len(annotated_flat):
+                    title_data["ai_annotation"] = annotated_flat[idx].get("ai_annotation", {})
+                idx += 1
+        # 2. 重写 HTML（复用原有 render_html_content 逻辑）
+        report_data = prepare_report_data(
+            stats, [], {}, {}, mode=CONFIG["REPORT_MODE"]
+        )
+        # 模拟调用 render_html_content，但插入 AI block
+        with open(html_file_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        # 在每条新闻后注入 AI block
+        lines = html_content.split('\n')
+        new_lines = []
+        for line in lines:
+            new_lines.append(line)
+            if '<div class="news-item' in line:
+                # 提取 title 用于匹配
+                next_line = lines[lines.index(line)+1] if lines.index(line)+1 < len(lines) else ""
+                if 'class="news-title"' in next_line:
+                    title_part = next_line.split('">')[-1].split('</')[0]
+                    # 匹配 stats 中的对应项
+                    for stat in stats:
+                        for title_data in stat["titles"]:
+                            if title_part in title_data["title"] and title_data.get("ai_annotation"):
+                                ann = title_data["ai_annotation"]
+                                if ann and "error" not in ann:
+                                    ai_block = f'''
+                            <div style="background:#f8fdff;border-left:3px solid #4f46e5;padding:8px;margin:8px 0 16px 0;border-radius:4px;font-size:0.85em">
+                              🤖 <b>AI标注</b>：{ann.get("event_type","")}<br>
+                              ✅ <b>受益环节</b>：{", ".join(ann.get("benefit_sectors",[]))}<br>
+                              📌 <b>小盘标的</b>：{", ".join(ann.get("small_cap_stocks",[]))}<br>
+                              ⚠️ <b>风险</b>：{ann.get("risk_note","—")}
+                            </div>
+                            '''
+                                    new_lines.append(ai_block)
+        # 保存新文件
+        new_html_path = html_file_path.replace(".html", "_AI.html")
+        with open(new_html_path, "w", encoding="utf-8") as f:
+            f.write('\n'.join(new_lines))
+        print(f"✅ AI 标注已注入 → {os.path.basename(new_html_path)}")
+        return new_html_path
+    except Exception as e:
+        print(f"⚠️ AI 标注重写失败：{e}")
+        return html_file_path
